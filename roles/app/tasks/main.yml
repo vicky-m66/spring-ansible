@@ -1,0 +1,87 @@
+---
+# tasks file for App
+- name: Create app Secret
+  community.kubernetes.k8s:
+     definition:
+        kind: Secret
+        apiVersion: v1
+        metadata:
+          name: db-user
+          namespace: '{{ ansible_operator_meta.namespace }}'
+        type: Opaque
+        data:
+          username: dGVzdHVzZXI=
+          password: dGVzdHVzZXJAMTIz
+- name: Create ConfigMap
+  community.kubernetes.k8s:
+     definition:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: db-config
+          namespace: '{{ ansible_operator_meta.namespace }}'
+        data:
+         database: test
+         host: mysql
+- name: Create springboot service
+  community.kubernetes.k8s:
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: students-app
+        namespace: '{{ ansible_operator_meta.namespace }}'
+      spec:
+       type: NodePort
+       selector:
+         app: students-app
+       ports:
+        - protocol: TCP
+          port: 8080
+          nodePort: 30163
+- name: Create Springboot deployment
+  community.kubernetes.k8s:
+    definition:
+       apiVersion: apps/v1
+       kind: Deployment
+       metadata:
+         name: students-app
+         namespace: '{{ ansible_operator_meta.namespace }}'
+         labels:
+           app: students-app
+       spec:
+         replicas: "{{size}}"
+         selector:
+           matchLabels:
+              app: students-app
+         template:
+            metadata:
+               labels:
+                  app: students-app
+            spec:
+             containers:
+              - name: students-app
+                image: "docker.io/750713/spring-app:4.0"
+                env:
+                 - name: DB_HOST   # Setting Database host address from configMap
+                   valueFrom:
+                    configMapKeyRef:
+                     name: db-config  # name of configMap
+                     key: host
+                 - name: DB_NAME  # Setting Database name from configMap
+                   valueFrom:
+                    configMapKeyRef:
+                     name: db-config
+                     key: name
+                 - name: DB_USERNAME  # Setting Database username from Secret
+                   valueFrom:
+                    secretKeyRef:
+                     name: db-user # Secret Name
+                     key: username
+                 - name: DB_PASSWORD # Setting Database password from Secret
+                   valueFrom:
+                    secretKeyRef:
+                     name: db-user
+                     key: password    
+                ports:
+                - containerPort: 8080

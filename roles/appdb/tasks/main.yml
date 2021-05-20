@@ -1,0 +1,111 @@
+---
+# tasks file for App
+- name: Create Secret
+  community.kubernetes.k8s:
+     definition:
+        kind: Secret
+        apiVersion: v1
+        metadata:
+          name: db-user
+          namespace: '{{ ansible_operator_meta.namespace }}'
+        data:
+          username: dGVzdHVzZXI=
+          password: dGVzdHVzZXJAMTIz
+- name: Create ConfigMap 
+  community.kubernetes.k8s:
+     definition:
+        kind: ConfigMap
+        apiVersion: v1
+        metadata:
+          name: db-config
+          namespace: '{{ ansible_operator_meta.namespace }}'
+        data:
+         database: test
+         host: mysql
+- name: Create Mysqldb Service
+  community.kubernetes.k8s:
+     definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+       name: mysql
+       namespace: '{{ ansible_operator_meta.namespace }}' 
+       labels:
+         app: mysql
+         tier: database
+      spec:
+        ports:
+         - port: 3306
+           targetPort: 3306
+        selector:       
+          app: mysql
+          tier: database  
+        #clusterIP: None
+- name: Create Persistent Volume Claim
+  community.kubernetes.k8s:
+     definition:
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: mysql-pv-claim
+        namespace: '{{ ansible_operator_meta.namespace }}' 
+        labels:
+         app: mysql
+         tier: database
+      spec:
+       accessModes:
+        - ReadWriteOnce   
+       resources:
+        requests:
+          storage: 1Gi
+- name: Create Mysqldb Deployment
+  community.kubernetes.k8s:
+     definition:
+       apiVersion: apps/v1
+       kind: Deployment
+       metadata:
+         name: mysql
+         namespace: '{{ ansible_operator_meta.namespace }}'
+         labels:
+           app: mysql
+           tier: database
+       spec:
+        selector: 
+         matchLabels:
+           app: mysql
+           tier: database
+         template:
+          metadata:
+            labels: 
+              app: mysql
+              tier: database
+         spec:
+           containers:
+           - image: "docker.io/mysql:5.7"
+             name: mysql
+             env:
+             - name: MYSQL_PASSWORD 
+               valueFrom:
+                 secretKeyRef:
+                   name: db-user 
+                   key: password   
+             - name: MYSQL_USER
+               valueFrom:
+                  secretKeyRef:
+                    name: db-user
+                    key: username
+             - name: MYSQL_DATABASE # Setting Database Name from a 'ConfigMap'
+               valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: name       
+             ports:
+              - containerPort: 3306
+                name: mysql
+             volumeMounts:        
+              - name: mysql-persistent-storage
+                mountPath: /var/lib/mysql 
+           volumes:
+             - name: mysql-persistent-storage 
+               persistentVolumeClaim:
+                claimName: mysql-pv-claim
