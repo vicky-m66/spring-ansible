@@ -61,7 +61,7 @@
             spec:
              containers:
               - name: students-app
-                image: "docker.io/750713/spring-app:4.0"
+                image: "docker.io/750713/students-app:4.0"
                 env:
                  - name: DB_HOST   # Setting Database host address from configMap
                    valueFrom:
