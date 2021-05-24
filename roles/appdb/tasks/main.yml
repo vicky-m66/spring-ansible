@@ -1,6 +1,6 @@
 ---
-# tasks file for App
-- name: Create Secret
+# tasks file for MySQL
+- name: Create Secret with MySQL credentials
   community.kubernetes.k8s:
      definition:
         kind: Secret
@@ -8,10 +8,11 @@
         metadata:
           name: db-user
           namespace: '{{ ansible_operator_meta.namespace }}'
+        type: Opaque
         data:
           username: dGVzdHVzZXI=
           password: dGVzdHVzZXJAMTIz
-- name: Create ConfigMap 
+- name: Create ConfigMap for MySQL
   community.kubernetes.k8s:
      definition:
         kind: ConfigMap
@@ -22,7 +23,7 @@
         data:
          database: test
          host: mysql
-- name: Create Mysqldb Service
+- name: Create MySQL Service
   community.kubernetes.k8s:
      definition:
       apiVersion: v1
@@ -58,7 +59,7 @@
        resources:
         requests:
           storage: 1Gi
-- name: Create Mysqldb Deployment
+- name: Create MySQL Deployment
   community.kubernetes.k8s:
      definition:
        apiVersion: apps/v1
@@ -74,33 +75,33 @@
          matchLabels:
            app: mysql
            tier: database
-         strategy:
-          type: Recreate  
-         template:
-          metadata:
-            labels: 
-              app: mysql
-              tier: database
+        strategy:
+          type: Recreate
+        template:
+         metadata:
+          labels: 
+            app: mysql
+            tier: database
          spec:
            containers:
-           - image: mysql:5.7
+           - image: "docker.io/mysql:5.7" 
              name: mysql
              env:
              - name: MYSQL_PASSWORD 
                valueFrom:
                  secretKeyRef:
                    name: db-user 
-                   key: password   
+                   key: password
              - name: MYSQL_USER
                valueFrom:
                   secretKeyRef:
                     name: db-user
-                    key: username
-             - name: MYSQL_DATABASE # Setting Database Name from a 'ConfigMap'
+                    key: username				   
+             - name: MYSQL_DATABASE
                valueFrom:
-                configMapKeyRef:
-                  name: db-config
-                  key: database       
+                  configMapKeyRef:
+                    name: db-config
+                    key: database
              ports:
               - containerPort: 3306
                 name: mysql
