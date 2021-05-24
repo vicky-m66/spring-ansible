@@ -6,19 +6,19 @@
         kind: Secret
         apiVersion: v1
         metadata:
-          name: db-user
+          name: '{{ ansible_operator_meta.name }}'
           namespace: '{{ ansible_operator_meta.namespace }}'
         type: Opaque
         data:
-          username: dGVzdHVzZXI=
-          password: dGVzdHVzZXJAMTIz
+         root-username: "{{root_username}}"
+         root-password: "{{root_password}}"
 - name: Create ConfigMap for MySQL
   community.kubernetes.k8s:
      definition:
         kind: ConfigMap
         apiVersion: v1
         metadata:
-          name: db-config
+          name: '{{ ansible_operator_meta.name }}'
           namespace: '{{ ansible_operator_meta.namespace }}'
         data:
          database: test
@@ -41,7 +41,7 @@
         selector:       
           app: mysql
           tier: database  
-        #clusterIP: None
+        clusterIP: None
 - name: Create Persistent Volume Claim
   community.kubernetes.k8s:
      definition:
@@ -65,7 +65,7 @@
        apiVersion: apps/v1
        kind: Deployment
        metadata:
-         name: mysql
+         name: '{{ ansible_operator_meta.name }}'
          namespace: '{{ ansible_operator_meta.namespace }}'
          labels:
            app: mysql
@@ -84,23 +84,18 @@
             tier: database
          spec:
            containers:
-           - image: "docker.io/mysql:5.7" 
+           - image: "docker.io/mysql:8.0" 
              name: mysql
              env:
-             - name: MYSQL_PASSWORD 
+             - name: MYSQL_ROOT_PASSWORD 
                valueFrom:
                  secretKeyRef:
-                   name: db-user 
-                   key: password
-             - name: MYSQL_USER
-               valueFrom:
-                  secretKeyRef:
-                    name: db-user
-                    key: username				   
+                   name: '{{ ansible_operator_meta.name }}' 
+                   key: root-password   
              - name: MYSQL_DATABASE
                valueFrom:
                   configMapKeyRef:
-                    name: db-config
+                    name: '{{ansible_operator_meta.name }}'
                     key: database
              ports:
               - containerPort: 3306
