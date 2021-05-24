@@ -1,4 +1,6 @@
 ---
 # defaults file for App
 size: 1
+root_password: dGVzdHVzZXI=
+root_username: dGVzdHVzZXJAMTIz 
 
