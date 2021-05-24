@@ -74,6 +74,8 @@
          matchLabels:
            app: mysql
            tier: database
+         strategy:
+          type: Recreate  
          template:
           metadata:
             labels: 
@@ -81,7 +83,7 @@
               tier: database
          spec:
            containers:
-           - image: "docker.io/mysql:5.7"
+           - image: mysql:5.7
              name: mysql
              env:
              - name: MYSQL_PASSWORD 
