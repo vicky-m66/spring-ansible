@@ -72,7 +72,7 @@
                    valueFrom:
                     configMapKeyRef:
                      name: db-config
-                     key: name
+                     key: database
                  - name: DB_USERNAME  # Setting Database username from Secret
                    valueFrom:
                     secretKeyRef:
